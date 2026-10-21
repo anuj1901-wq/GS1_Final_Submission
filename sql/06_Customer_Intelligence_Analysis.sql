@@ -1,0 +1,43 @@
+SELECT
+    PLAN,
+
+    COUNT_IF(
+        EXPIRY_SEGMENT = 'EXPIRED'
+    ) AS EXPIRED_GCPS,
+
+    COUNT_IF(
+        POST_EXPIRY_ACTIVITY_FLAG = 1
+    ) AS POST_EXPIRY_ACTIVITY_GCPS,
+
+    ROUND(
+        100.0 * COUNT_IF(
+            POST_EXPIRY_ACTIVITY_FLAG = 1
+        ) /
+        NULLIF(
+            COUNT_IF(
+                EXPIRY_SEGMENT = 'EXPIRED'
+            ),
+            0
+        ),
+        2
+    ) AS POST_EXPIRY_PCT_OF_EXPIRED,
+
+    MAX(
+        CASE
+            WHEN POST_EXPIRY_ACTIVITY_FLAG = 1
+            THEN DATEDIFF(
+                'DAY',
+                END_DATE,
+                LAST_ACTIVITY_DATE
+            )
+        END
+    ) AS MAX_DAYS_AFTER_EXPIRY
+
+FROM ANALYTICS.CUSTOMER_METRICS
+
+WHERE MATCH_STATUS = 'MATCHED'
+  AND COMPANY_ID_MISMATCH = FALSE
+  AND NOT INVALID_SUBSCRIPTION_PERIOD
+
+GROUP BY PLAN
+ORDER BY POST_EXPIRY_ACTIVITY_GCPS DESC;
